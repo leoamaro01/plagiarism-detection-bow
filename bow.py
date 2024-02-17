@@ -1,6 +1,9 @@
 from math import log, sqrt
 
 def bow(text1: str, text2: str) -> list[float]:
+    text1 = cleanup_text(text1)
+    text2 = cleanup_text(text2)
+    
     pgphs1 = get_paragraphs(text1)
     pgphs2 = get_paragraphs(text2)
     
@@ -9,11 +12,11 @@ def bow(text1: str, text2: str) -> list[float]:
     
     # now we create a frequency matrix, where each row is 
     # a frequency vector for a paragraph
-    t1feqs = list(map(get_terms_frequencies, pgphs1))
-    t2feqs = list(map(get_terms_frequencies, pgphs2))
+    t1feqs = list(map(lambda p: get_terms_frequencies(p, terms), pgphs1))
+    t2feqs = list(map(lambda p: get_terms_frequencies(p, terms), pgphs2))
 
-    bow1 = list(map(get_doc_tf_idf, t1feqs))
-    bow2 = list(map(get_doc_tf_idf, t2feqs))
+    bow1 = list(map(lambda f: get_doc_tf_idf(f, t1feqs), t1feqs))
+    bow2 = list(map(lambda f: get_doc_tf_idf(f, t2feqs), t2feqs))
     
     def get_best_similarity(v: list[float]) -> float:
         return max(map(lambda p: cosine_similarity(v, p)
@@ -39,7 +42,7 @@ def get_paragraphs(text: str) -> list[str]:
     
     for p in raw_pgphs:
         if p != '' and not p.isspace():
-            pgphs.append()
+            pgphs.append(p)
             
     return pgphs
 
@@ -54,7 +57,7 @@ def get_clean_words(text: str) -> list[str]:
 # retrieves a list of the unique terms in a text.
 # e.g. "love is love, always love yourself" -> ["love", "is", "always", "yourself"]
 def get_terms(text: str) -> list[str]:
-    words = get_clean_words()
+    words = get_clean_words(text)
     
     unique_words = []
     
@@ -76,21 +79,40 @@ def cleanup_word(word: str) -> str:
     return clean_w
 
 
+# removes all special characters and numbers from text
+def cleanup_text(text: str) -> str:
+    clean_text = ''
+    
+    for c in text:
+        if c.isalpha() or c.isspace():
+            clean_text += c.casefold()
+            
+    return clean_text
+
 # calculates the tf_idf vector for a document frequencies vector
 def get_doc_tf_idf(doc_freqs: list[int], corpus: list[list[int]]) -> list[float]:
-    def get_tf(t_idx: int) -> float:
-        return (0.5 + 0.5 * (doc_freqs[t_idx] / max(1, max(doc_freqs))))
+    max_freq = max(doc_freqs)
+    if max_freq == 0:
+        return list(map(lambda _: 0, range(len(doc_freqs))))
+    corpus_len = len(corpus)
+    
+    def get_tf(t_idx: int) -> float:           
+        return doc_freqs[t_idx] / max_freq
     
     def get_idf(t_idx: int) -> float:
         docs_with_t: float = 0 # type float to avoid integer division
         for d in corpus:
             if d[t_idx] > 0:
                 docs_with_t += 1
-        docs_with_t = max(docs_with_t, 1)
-        return log(len(corpus) / docs_with_t)
+        
+        return log(corpus_len / docs_with_t)
     
     def get_tfidf(t_idx: int) -> float:
-        return get_tf(t_idx) * get_idf(t_idx)
+        tf = get_tf(t_idx)
+        if tf > 0:         
+            return tf * get_idf(t_idx)
+        else:
+            return 0
     
     return list(map(get_tfidf, range(len(doc_freqs))))
     
@@ -109,3 +131,17 @@ def get_terms_frequencies(text: str, terms: list[str]) -> list[int]:
         freqs.append(count)
     
     return freqs
+
+with open("text1.txt") as f:
+    txt1 = f.read()
+
+with open("text2.txt") as f:
+    txt2 = f.read()
+    
+with open("text3.txt") as f:
+    txt3 = f.read()
+    
+with open("text4.txt") as f:
+    txt4 = f.read()
+
+print(bow(txt1, txt2))
